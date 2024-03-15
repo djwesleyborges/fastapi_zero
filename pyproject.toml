@@ -12,6 +12,8 @@ uvicorn = "^0.28.0"
 ipython = "^8.22.2"
 ignr = "^2.2"
 pydantic = {extras = ["email"], version = "^2.6.4"}
+sqlalchemy = "^2.0.28"
+pydantic-settings = "^2.2.1"
 
 
 [tool.poetry.group.dev.dependencies]
