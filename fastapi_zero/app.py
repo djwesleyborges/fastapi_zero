@@ -1,7 +1,10 @@
 from http import HTTPStatus
 
 from fastapi import FastAPI, HTTPException
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
+from fastapi_zero.models import User
 from fastapi_zero.schema import (
     Message,
     UserDBSchema,
@@ -9,6 +12,7 @@ from fastapi_zero.schema import (
     UserPublicSchema,
     UserSchema,
 )
+from fastapi_zero.settings import Settings
 
 app = FastAPI(title='FastAPI Zero')
 
@@ -24,11 +28,6 @@ def read_root():
     '/users/', status_code=HTTPStatus.CREATED, response_model=UserPublicSchema
 )
 def create_user(user: UserSchema):
-    from sqlalchemy import create_engine, select
-    from sqlalchemy.orm import Session
-
-    from fastapi_zero.models import User
-    from fastapi_zero.settings import Settings
 
     engine = create_engine(Settings().DATABASE_URL)
 
@@ -36,29 +35,29 @@ def create_user(user: UserSchema):
 
     db_user = session.scalar(
         select(User).where(
-              (User.username == user.username) | (User.email == user.email)
-            )
+            (User.username == user.username) | (User.email == user.email)
         )
-    
+    )
+
     if db_user:
         if db_user.username == user.username:
             raise HTTPException(
-                status_code=HTTPStatus.CONFLICT, detail='Username already exists'
+                status_code=HTTPStatus.CONFLICT,
+                detail='Username already exists',
             )
         elif db_user.email == user.email:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT, detail='Email already exists'
             )
     db_user = User(
-        username=user.username,
-        email=user.email,
-        password=user.password
-        )
+        username=user.username, email=user.email, password=user.password
+    )
 
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
     return db_user
+
 
 @app.get('/users/', response_model=UserListSchema, status_code=HTTPStatus.OK)
 def get_users():
