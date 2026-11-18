@@ -24,10 +24,41 @@ def read_root():
     '/users/', status_code=HTTPStatus.CREATED, response_model=UserPublicSchema
 )
 def create_user(user: UserSchema):
-    user_with_id = UserDBSchema(id=len(database) + 1, **user.model_dump())
-    database.append(user_with_id)
-    return user_with_id
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
 
+    from fastapi_zero.models import User
+    from fastapi_zero.settings import Settings
+
+    engine = create_engine(Settings().DATABASE_URL)
+
+    session = Session(engine)
+
+    db_user = session.scalar(
+        select(User).where(
+              (User.username == user.username) | (User.email == user.email)
+            )
+        )
+    
+    if db_user:
+        if db_user.username == user.username:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT, detail='Username already exists'
+            )
+        elif db_user.email == user.email:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT, detail='Email already exists'
+            )
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        password=user.password
+        )
+
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
 
 @app.get('/users/', response_model=UserListSchema, status_code=HTTPStatus.OK)
 def get_users():
